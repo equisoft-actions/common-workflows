@@ -17,6 +17,11 @@ jobs:
   check-approvals:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
       - name: Count approvals
         id: count_approvals
         run: echo "approved=$(gh pr view ${{ github.event.number }} --json reviews,reviewDecision --jq '[.reviews[] | select(.state == "APPROVED") | .author.login] | unique | length')" >> $GITHUB_OUTPUT
