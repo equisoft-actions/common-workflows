@@ -1,0 +1,58 @@
+name: check approvals
+
+on:
+  workflow_call:
+    inputs:
+      NUMBER_OF_APPROVALS:
+        required: false
+        default: 2
+        type: number
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  check-approvals:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Count approvals
+        id: count_approvals
+        run: echo "approved=$(gh pr view ${{ github.event.number }} --json reviews,reviewDecision --jq '[.reviews[] | select(.state == "APPROVED") | .author.login] | unique | length')" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: actions/github-script@v6
+        name: Set status
+        with:
+          github-token: ${{ github.token }}
+          retries: 3
+          script: |
+            let state;
+            let description;
+            if (${{ contains(github.event.pull_request.labels.*.name, 'require_many_approvals') }}==false){
+              state = 'success';
+              description = 'Skip approvals check';
+            } else if (${{ steps.count_approvals.outputs.approved }}<${{ inputs.NUMBER_OF_APPROVALS }}){
+              state = 'failure';
+              description = 'Pull request must have at least ${{ inputs.NUMBER_OF_APPROVALS }} approvals';
+            } else {
+              state = 'success';
+              description = 'Pull request have ${{ steps.count_approvals.outputs.approved }} approvals';
+            }
+
+            const { payload } = context;
+            const sha = payload.pull_request && payload.pull_request.head
+                  ? payload.pull_request.head.sha
+                  : context.sha;
+
+            const response = await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state,
+              target_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+              description,
+              context: "Approval status"
+            });
