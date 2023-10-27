@@ -38,13 +38,13 @@ jobs:
             let description;
             if (${{ contains(github.event.pull_request.labels.*.name, 'require_many_approvals') }}==false){
               state = 'success';
-              description = 'Skip approvals check';
+              description = 'This PR does not require many approvals';
             } else if (${{ steps.count_approvals.outputs.approved }}<${{ inputs.NUMBER_OF_APPROVALS }}){
               state = 'failure';
-              description = 'Pull request must have at least ${{ inputs.NUMBER_OF_APPROVALS }} approvals';
+              description = 'This PR must have at least ${{ inputs.NUMBER_OF_APPROVALS }} approvals';
             } else {
               state = 'success';
-              description = 'Pull request have ${{ steps.count_approvals.outputs.approved }} approvals';
+              description = 'This PR has ${{ steps.count_approvals.outputs.approved }} approvals';
             }
 
             const { payload } = context;
